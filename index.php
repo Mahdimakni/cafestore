@@ -66,15 +66,23 @@ $produits_vedettes = $db->query("
         </div>
 
         <div class="products-grid">
-            <?php foreach ($produits_vedettes as $p): ?>
+            <?php 
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            if (!isset($_SESSION['favorites'])) $_SESSION['favorites'] = [];
+            foreach ($produits_vedettes as $p): 
+                $is_fav = in_array($p['id'], $_SESSION['favorites']);
+            ?>
                 <div class="product-card">
-                <div style="overflow:hidden; height:200px;">
+                <div style="position:relative; overflow:hidden; height:200px;">
                     <?= productImage($p['image'], $p['nom']) ?>
+                    <button class="btn-fav <?= $is_fav ? 'active' : '' ?>" onclick="toggleFavorite(<?= $p['id'] ?>, this)" title="Favoris">
+                        <?= $is_fav ? '❤️' : '🤍' ?>
+                    </button>
                 </div>
                 <div class="product-body">
                     <div class="product-cat"><?= htmlspecialchars($p['categorie_nom'] ?? 'Café') ?></div>
                     <div class="product-name"><?= htmlspecialchars($p['nom']) ?></div>
-                    <div class="product-desc"><?= htmlspecialchars(substr($p['description'], 0, 90)) ?>...</div>
+                    <div class="product-desc"><?= htmlspecialchars(mb_substr($p['description'], 0, 90)) ?>...</div>
                     <div class="product-meta">
                         <div class="product-price"><?= number_format($p['prix'], 2) ?> <span>TND</span></div>
                         <div class="intensity-bar" title="Intensité: <?= $p['intensite'] ?>/10">
@@ -84,13 +92,20 @@ $produits_vedettes = $db->query("
                         </div>
                     </div>
                 </div>
-                <div class="product-actions">
-                    <a href="pages/produits.php?id=<?= $p['id'] ?>" class="btn btn-outline btn-sm" style="flex:1;">Détails</a>
-                    <?php if (isLoggedIn()): ?>
-                    <a href="pages/panier.php?action=add&id=<?= $p['id'] ?>" class="btn btn-primary btn-sm" style="flex:1;">Ajouter 🛒</a>
-                    <?php else: ?>
-                    <a href="pages/login.php" class="btn btn-primary btn-sm" style="flex:1;">Se connecter</a>
-                    <?php endif; ?>
+                <div class="product-actions" style="display:flex; gap:0.5rem; flex-direction:column;">
+                    <div class="qty-selector" style="display:flex; width:100%; border:1px solid #ddd; border-radius:50px; overflow:hidden;">
+                        <button type="button" class="qty-btn" onclick="updateQty(this, -1)" style="flex:1; border:none; background:var(--cream); cursor:pointer;">-</button>
+                        <input type="number" class="qty-input" id="qty-idx-<?= $p['id'] ?>" value="1" min="1" max="<?= $p['stock'] ?>" readonly style="flex:2; border:none; text-align:center; font-family:'DM Sans'; font-weight:bold; background:var(--white); -moz-appearance: textfield;">
+                        <button type="button" class="qty-btn" onclick="updateQty(this, 1)" style="flex:1; border:none; background:var(--cream); cursor:pointer;">+</button>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; width:100%;">
+                        <a href="pages/produits.php?id=<?= $p['id'] ?>" class="btn btn-outline btn-sm" style="flex:1; text-align:center; padding: 0.5rem;">Détails</a>
+                        <?php if ($p['stock'] > 0): ?>
+                            <button class="btn btn-primary btn-sm" style="flex:2; padding: 0.5rem;" onclick="addToCart(<?= $p['id'] ?>, document.getElementById('qty-idx-<?= $p['id'] ?>').value)">Ajouter 🛒</button>
+                        <?php else: ?>
+                            <button class="btn btn-outline btn-sm" style="flex:2; opacity:0.5; cursor:not-allowed; padding: 0.5rem;" disabled>Épuisé</button>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
             <?php endforeach; ?>

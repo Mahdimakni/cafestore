@@ -95,7 +95,7 @@ $total = getCartTotal();
 
 <div class="page-hero">
     <h1>🛒 Mon Panier</h1>
-    <p><?= getCartCount() ?> article(s)</p>
+    <p><span class="cart-count"><?= getCartCount() ?></span> article(s)</p>
 </div>
 
 <div class="page-content">
@@ -109,49 +109,66 @@ $total = getCartTotal();
 <?php else: ?>
     <div style="display:grid; grid-template-columns:1fr 350px; gap:2rem; align-items:start;">
         <div>
-            <table class="cart-table">
-                <thead>
-                    <tr>
-                        <th>Produit</th>
-                        <th>Prix unitaire</th>
-                        <th>Quantité</th>
-                        <th>Sous-total</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($produits_panier as $p): ?>
-                    <tr>
-                        <td><strong><?= htmlspecialchars($p['nom']) ?></strong><br><small style="color:var(--text-light);">🌍 <?= htmlspecialchars($p['origine']) ?></small></td>
-                        <td><?= number_format($p['prix'], 2) ?> TND</td>
-                        <td><?= $p['quantite'] ?></td>
-                        <td><strong><?= number_format($p['sous_total'], 2) ?> TND</strong></td>
-                        <td><a href="panier.php?action=remove&id=<?= $p['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Retirer ce produit ?')">✕</a></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-            <div style="margin-top:1rem;">
+            <div style="background:var(--white); border-radius:var(--radius); box-shadow:0 4px 15px var(--shadow); padding:1rem;">
+                <table class="cart-table" style="margin-bottom:0;">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Prix</th>
+                            <th>Quantité</th>
+                            <th>Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($produits_panier as $p): ?>
+                        <tr id="cart-row-<?= $p['id'] ?>">
+                            <td>
+                                <div style="display:flex; align-items:center; gap:1rem;">
+                                    <div style="width:50px; height:50px; border-radius:8px; overflow:hidden;">
+                                        <?= productImage($p['image'], $p['nom']) ?>
+                                    </div>
+                                    <div>
+                                        <strong><?= htmlspecialchars($p['nom']) ?></strong><br>
+                                        <small style="color:var(--text-light);">🌍 <?= htmlspecialchars($p['origine']) ?></small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><?= number_format($p['prix'], 2) ?> TND</td>
+                            <td>
+                                <div class="cart-qty-ctrl">
+                                    <button type="button" onclick="const input = this.nextElementSibling; input.value = Math.max(1, parseInt(input.value) - 1); updateCartItem(<?= $p['id'] ?>, input.value);">-</button>
+                                    <input type="number" value="<?= $p['quantite'] ?>" min="1" max="<?= $p['stock'] ?>" readonly>
+                                    <button type="button" onclick="const input = this.previousElementSibling; input.value = Math.min(parseInt(input.max), parseInt(input.value) + 1); updateCartItem(<?= $p['id'] ?>, input.value);">+</button>
+                                </div>
+                            </td>
+                            <td><strong id="subtotal-<?= $p['id'] ?>"><?= number_format($p['sous_total'], 2) ?> TND</strong></td>
+                            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeCartItem(<?= $p['id'] ?>)">✕</button></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:1rem; text-align:right;">
                 <a href="panier.php?action=clear" class="btn btn-outline btn-sm" onclick="return confirm('Vider tout le panier ?')">🗑 Vider le panier</a>
             </div>
         </div>
 
         <div class="cart-summary">
             <h3 style="margin-bottom:1.5rem; font-family:'Playfair Display',serif;">Récapitulatif</h3>
-            <?php foreach ($produits_panier as $p): ?>
+            
             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.9rem;">
-                <span><?= htmlspecialchars($p['nom']) ?> × <?= $p['quantite'] ?></span>
-                <span><?= number_format($p['sous_total'], 2) ?> TND</span>
+                <span>Sous-total</span>
+                <span class="cart-total-value"><?= number_format($total, 2) ?> TND</span>
             </div>
-            <?php endforeach; ?>
-            <hr style="margin:1rem 0; border-color:var(--cream);">
             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem; font-size:0.9rem; color:var(--text-light);">
                 <span>Livraison</span>
-                <span><?= $total >= 50 ? 'Gratuite 🎉' : '5.00 TND' ?></span>
+                <span id="shipping-cost"><?= $total >= 50 ? 'Gratuite 🎉' : '5.00 TND' ?></span>
             </div>
+            <hr style="margin:1rem 0; border-color:var(--cream);">
             <div class="cart-total" style="display:flex; justify-content:space-between;">
                 <span>Total</span>
-                <span><?= number_format($total + ($total >= 50 ? 0 : 5), 2) ?> TND</span>
+                <span id="grand-total"><?= number_format($total + ($total >= 50 ? 0 : 5), 2) ?> TND</span>
             </div>
 
             <form method="POST" action="">

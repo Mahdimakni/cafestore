@@ -129,4 +129,20 @@ function showFlash() {
         echo "<div class='flash {$cls}'>" . htmlspecialchars($flash['message']) . "</div>";
     }
 }
+
+// ── Stock display ─────────────────────────────────────────────────────────────
+
+function getStockDisplay($stock) {
+    if (isAdmin()) {
+        return '📦 ' . $stock . ' unités en stock';
+    }
+    
+    if ($stock <= 0) {
+        return '<span style="color:var(--error); font-weight:bold;">📦 Rupture de stock</span>';
+    } elseif ($stock < 10) {
+        return '<span style="color:var(--gold); font-weight:bold;">📦 Stock presque épuisé</span>';
+    } else {
+        return '<span style="color:var(--success); font-weight:bold;">📦 En stock</span>';
+    }
+}
 ?>

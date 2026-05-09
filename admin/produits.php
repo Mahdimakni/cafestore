@@ -1,241 +1,93 @@
 <?php
-$pageTitle = 'Nos Cafés';
-require_once __DIR__ . '/../includes/header.php';
+$pageTitle = 'Gestion des Produits';
+require_once __DIR__ . '/header.php';
 
 $db = getDB();
 
-// Filtres
-$cat_id  = intval($_GET['categorie'] ?? 0);
-$search  = trim($_GET['q'] ?? '');
-$sort    = $_GET['tri'] ?? 'date_ajout';
-
-$allowed_sorts = [
-    'date_ajout' => 'p.date_ajout',
-    'prix'       => 'p.prix',
-    'nom'        => 'p.nom',
-    'intensite'  => 'p.intensite'
-];
-
-if (!array_key_exists($sort, $allowed_sorts)) {
-    $sort = 'date_ajout';
+// Handle Delete
+if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+    $id = intval($_GET['id']);
+    // Optionnel: vérifier si des commandes contiennent ce produit avant de le supprimer, 
+    // ou supprimer l'image associée. Pour faire simple, on supprime.
+    $stmt = $db->prepare("DELETE FROM produits WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute()) {
+        setFlash("Produit supprimé avec succès.", "success");
+    } else {
+        setFlash("Erreur lors de la suppression.", "error");
+    }
+    header("Location: produits.php");
+    exit;
 }
 
-$order_by = $allowed_sorts[$sort];
-
-// Produit unique
-$produit_id = intval($_GET['id'] ?? 0);
-
-if ($produit_id > 0) {
-    $stmt = $db->prepare("
-        SELECT p.*, c.nom AS categorie_nom
-        FROM produits p
-        LEFT JOIN categories c ON p.categorie_id = c.id
-        WHERE p.id = ?
-    ");
-    $stmt->bind_param("i", $produit_id);
-    $stmt->execute();
-    $produit = $stmt->get_result()->fetch_assoc();
-} else {
-    $produit = null;
+// Handle Quick Stock Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_stock'])) {
+    $id = intval($_POST['id']);
+    $stock = intval($_POST['stock']);
+    $stmt = $db->prepare("UPDATE produits SET stock = ? WHERE id = ?");
+    $stmt->bind_param("ii", $stock, $id);
+    if ($stmt->execute()) {
+        setFlash("Stock mis à jour avec succès.", "success");
+    } else {
+        setFlash("Erreur lors de la mise à jour.", "error");
+    }
+    header("Location: produits.php");
+    exit;
 }
 
-// Liste des catégories
-$categories = $db->query("SELECT * FROM categories ORDER BY nom")
-                 ->fetch_all(MYSQLI_ASSOC);
-
-// Requête produits
-$where  = [];
-$params = [];
-$types  = '';
-
-if ($cat_id > 0) {
-    $where[]  = "p.categorie_id = ?";
-    $params[] = $cat_id;
-    $types   .= 'i';
-}
-
-if (!empty($search)) {
-    $where[] = "(p.nom LIKE ? OR p.description LIKE ? OR p.origine LIKE ?)";
-    $like = "%$search%";
-
-    $params[] = $like;
-    $params[] = $like;
-    $params[] = $like;
-
-    $types .= 'sss';
-}
-
-$where_sql = $where ? "WHERE " . implode(" AND ", $where) : "";
-
-$query = "
-    SELECT p.*, c.nom AS categorie_nom
-    FROM produits p
-    LEFT JOIN categories c ON p.categorie_id = c.id
-    $where_sql
-    ORDER BY $order_by ASC
-";
-
-$stmt = $db->prepare($query);
-
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
-}
-
-$stmt->execute();
-$produits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+// Fetch products
+$produits = $db->query("
+    SELECT p.*, c.nom AS categorie_nom 
+    FROM produits p 
+    LEFT JOIN categories c ON p.categorie_id = c.id 
+    ORDER BY p.date_ajout DESC
+")->fetch_all(MYSQLI_ASSOC);
 ?>
 
-<div class="page-hero">
-    <h1>Nos Cafés</h1>
-    <p>Sélection de <?= count($produits) ?> cafés d'exception</p>
+<div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+    <a href="produit_edit.php" class="btn btn-primary">+ Ajouter un produit</a>
 </div>
 
-<?php if ($produit): ?>
-
-<!-- DÉTAIL PRODUIT -->
-<div class="page-content">
-    <a href="produits.php" style="color:var(--gold); display:inline-flex; align-items:center; gap:0.5rem; margin-bottom:2rem;">
-        ← Retour à la liste
-    </a>
-
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:3rem; align-items:start;">
-
-        <div style="overflow:hidden; border-radius:var(--radius); height:350px; box-shadow:0 4px 15px var(--shadow);">
-            <?= productImage($produit['image'], $produit['nom'], 'product-img') ?>
-            <style>.product-img{height:350px !important;}</style>
-        </div>
-
-        <div>
-            <div class="product-cat"><?= htmlspecialchars($produit['categorie_nom'] ?? '') ?></div>
-
-            <h1 style="margin-bottom:1rem;">
-                <?= htmlspecialchars($produit['nom']) ?>
-            </h1>
-
-            <div style="font-size:2rem; font-weight:900; color:var(--brown-mid); margin-bottom:1.5rem;">
-                <?= number_format($produit['prix'], 2) ?> TND
-            </div>
-
-            <p style="color:var(--text-mid); margin-bottom:1.5rem; line-height:1.8;">
-                <?= htmlspecialchars($produit['description']) ?>
-            </p>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:2rem;">
-
-                <div style="background:var(--cream); padding:1rem; border-radius:8px;">
-                    <div style="font-size:0.75rem; color:var(--text-light);">Origine</div>
-                    <div style="font-weight:700;">🌍 <?= htmlspecialchars($produit['origine']) ?></div>
-                </div>
-
-                <div style="background:var(--cream); padding:1rem; border-radius:8px;">
-                    <div style="font-size:0.75rem; color:var(--text-light);">Stock</div>
-                    <div style="font-weight:700;">📦 <?= $produit['stock'] ?> unités</div>
-                </div>
-
-                <div style="background:var(--cream); padding:1rem; border-radius:8px;">
-                    <div style="font-size:0.75rem; color:var(--text-light); margin-bottom:0.5rem;">Intensité</div>
-                    <div class="intensity-bar">
-                        <?php for ($i = 1; $i <= 10; $i++): ?>
-                            <div class="intensity-dot <?= $i <= $produit['intensite'] ? 'filled' : '' ?>"></div>
-                        <?php endfor; ?>
-                        <span style="margin-left:0.5rem; font-weight:700;">
-                            <?= $produit['intensite'] ?>/10
-                        </span>
+<div style="background:var(--white); border-radius:var(--radius); box-shadow:0 2px 10px var(--shadow); overflow:hidden;">
+    <table class="data-table" style="width:100%; border-collapse:collapse; text-align:left;">
+        <thead style="background:var(--cream); color:var(--brown-dark);">
+            <tr>
+                <th style="padding:1rem;">ID</th>
+                <th style="padding:1rem;">Image</th>
+                <th style="padding:1rem;">Nom</th>
+                <th style="padding:1rem;">Catégorie</th>
+                <th style="padding:1rem;">Prix</th>
+                <th style="padding:1rem;">Stock</th>
+                <th style="padding:1rem; text-align:right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($produits as $p): ?>
+            <tr style="border-bottom:1px solid var(--cream);">
+                <td style="padding:1rem;"><?= $p['id'] ?></td>
+                <td style="padding:1rem;">
+                    <div style="width:50px; height:50px; border-radius:8px; overflow:hidden;">
+                        <?= productImage($p['image'], $p['nom']) ?>
                     </div>
-                </div>
-
-            </div>
-
-            <?php if (isLoggedIn()): ?>
-                <form method="GET" action="panier.php" style="display:flex; gap:1rem;">
-                    <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="id" value="<?= $produit['id'] ?>">
-
-                    <input type="number" name="qty" value="1" min="1" max="<?= $produit['stock'] ?>">
-
-                    <button type="submit" class="btn btn-primary">
-                        Ajouter au panier 🛒
-                    </button>
-                </form>
-            <?php else: ?>
-                <a href="login.php" class="btn btn-primary btn-full">
-                    Se connecter pour commander
-                </a>
-            <?php endif; ?>
-
-        </div>
-    </div>
-</div>
-
-<?php else: ?>
-
-<!-- LISTE PRODUITS -->
-<div class="page-content">
-
-    <form method="GET" style="margin-bottom:2rem; display:flex; gap:1rem; flex-wrap:wrap;">
-
-        <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Recherche...">
-
-        <select name="categorie">
-            <option value="0">Toutes</option>
-            <?php foreach ($categories as $cat): ?>
-                <option value="<?= $cat['id'] ?>" <?= $cat_id == $cat['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($cat['nom']) ?>
-                </option>
+                </td>
+                <td style="padding:1rem;"><strong><?= htmlspecialchars($p['nom']) ?></strong></td>
+                <td style="padding:1rem;"><?= htmlspecialchars($p['categorie_nom'] ?? 'N/A') ?></td>
+                <td style="padding:1rem;"><?= number_format($p['prix'], 2) ?> TND</td>
+                <td style="padding:1rem;">
+                    <form method="POST" action="produits.php" style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="hidden" name="id" value="<?= $p['id'] ?>">
+                        <input type="number" name="stock" value="<?= $p['stock'] ?>" min="0" style="width:70px; padding:0.3rem; border:1px solid #ddd; border-radius:4px; font-family:'DM Sans';">
+                        <button type="submit" name="update_stock" class="btn btn-outline btn-sm" style="padding:0.3rem 0.6rem;" title="Mettre à jour le stock">OK</button>
+                    </form>
+                </td>
+                <td style="padding:1rem; text-align:right;">
+                    <a href="produit_edit.php?id=<?= $p['id'] ?>" class="btn btn-outline btn-sm" style="margin-right:0.5rem;">✏️</a>
+                    <a href="produits.php?action=delete&id=<?= $p['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Voulez-vous vraiment supprimer ce produit ?');">🗑</a>
+                </td>
+            </tr>
             <?php endforeach; ?>
-        </select>
-
-        <select name="tri">
-            <option value="date_ajout" <?= $sort == 'date_ajout' ? 'selected' : '' ?>>Nouveautés</option>
-            <option value="prix" <?= $sort == 'prix' ? 'selected' : '' ?>>Prix</option>
-            <option value="nom" <?= $sort == 'nom' ? 'selected' : '' ?>>Nom</option>
-            <option value="intensite" <?= $sort == 'intensite' ? 'selected' : '' ?>>Intensité</option>
-        </select>
-
-        <button type="submit" class="btn btn-primary">Filtrer</button>
-    </form>
-
-    <div class="products-grid">
-
-        <?php foreach ($produits as $p): ?>
-            <div class="product-card">
-
-                <div style="height:200px; overflow:hidden;">
-                    <?= productImage($p['image'], $p['nom']) ?>
-                </div>
-
-                <div class="product-body">
-
-                    <div class="product-cat">
-                        <?= htmlspecialchars($p['categorie_nom'] ?? 'Café') ?>
-                    </div>
-
-                    <div class="product-name">
-                        <?= htmlspecialchars($p['nom']) ?>
-                    </div>
-
-                    <div class="product-desc">
-                        <?= htmlspecialchars(mb_substr($p['description'], 0, 100)) ?>...
-                    </div>
-
-                    <div class="product-price">
-                        <?= number_format($p['prix'], 2) ?> TND
-                    </div>
-
-                </div>
-
-                <div class="product-actions">
-                    <a href="produits.php?id=<?= $p['id'] ?>">Détails</a>
-                    <a href="panier.php?action=add&id=<?= $p['id'] ?>">🛒 Ajouter</a>
-                </div>
-
-            </div>
-        <?php endforeach; ?>
-
-    </div>
-
+        </tbody>
+    </table>
 </div>
 
-<?php endif; ?>
-
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/footer.php'; ?>

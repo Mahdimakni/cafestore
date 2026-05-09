@@ -5,9 +5,11 @@ require_once __DIR__ . '/../includes/header.php';
 $db = getDB();
 
 // Filtres
-$cat_id  = intval($_GET['categorie'] ?? 0);
-$search  = trim($_GET['q'] ?? '');
-$sort    = $_GET['tri'] ?? 'date_ajout';
+$cat_id    = intval($_GET['categorie'] ?? 0);
+$intensite = intval($_GET['intensite'] ?? 0);
+$origine   = $_GET['origine'] ?? '';
+$search    = trim($_GET['q'] ?? '');
+$sort      = $_GET['tri'] ?? 'date_ajout';
 
 /* =========================
    TRI SECURISÉ
@@ -148,7 +150,7 @@ $produits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 </div>
 
                 <div style="background:var(--cream); padding:1rem; border-radius:8px;">
-                    📦 <?= $produit['stock'] ?> unités
+                    <?= getStockDisplay($produit['stock']) ?>
                 </div>
 
                 <div style="background:var(--cream); padding:1rem; border-radius:8px;">
@@ -163,22 +165,29 @@ $produits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             </div>
 
             <!-- ACTION -->
-            <?php if (isLoggedIn()): ?>
-                <form method="GET" action="panier.php" style="display:flex; gap:1rem;">
-                    <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="id" value="<?= $produit['id'] ?>">
+            <div style="display:flex; gap:1rem; align-items:center;">
+                <div class="qty-selector" style="display:flex; border:1px solid #ddd; border-radius:50px; overflow:hidden; width:120px;">
+                    <button type="button" class="qty-btn" onclick="updateQty(this, -1)" style="flex:1; border:none; background:var(--cream); cursor:pointer;">-</button>
+                    <input type="number" class="qty-input" id="qty-detail-<?= $produit['id'] ?>" value="1" min="1" max="<?= $produit['stock'] ?>" readonly style="flex:2; border:none; text-align:center; font-family:'DM Sans'; font-weight:bold; background:var(--white); -moz-appearance: textfield;">
+                    <button type="button" class="qty-btn" onclick="updateQty(this, 1)" style="flex:1; border:none; background:var(--cream); cursor:pointer;">+</button>
+                </div>
 
-                    <input type="number" name="qty" value="1" min="1" max="<?= $produit['stock'] ?>">
-
-                    <button type="submit" class="btn btn-primary">
-                        Ajouter 🛒
+                <?php if ($produit['stock'] > 0): ?>
+                    <button class="btn btn-primary" onclick="addToCart(<?= $produit['id'] ?>, document.getElementById('qty-detail-<?= $produit['id'] ?>').value)" style="flex:1;">
+                        Ajouter au panier 🛒
                     </button>
-                </form>
-            <?php else: ?>
-                <a href="login.php" class="btn btn-primary btn-full">
-                    Se connecter
-                </a>
-            <?php endif; ?>
+                <?php else: ?>
+                    <button class="btn btn-outline" style="flex:1; opacity:0.5; cursor:not-allowed;" disabled>Épuisé</button>
+                <?php endif; ?>
+                
+                <?php 
+                if (session_status() === PHP_SESSION_NONE) session_start();
+                $is_fav = in_array($produit['id'], $_SESSION['favorites'] ?? []);
+                ?>
+                <button class="btn-fav <?= $is_fav ? 'active' : '' ?>" style="position:static; margin-left:0.5rem;" onclick="toggleFavorite(<?= $produit['id'] ?>, this)" title="Favoris">
+                    <?= $is_fav ? '❤️' : '🤍' ?>
+                </button>
+            </div>
 
         </div>
     </div>
@@ -187,73 +196,120 @@ $produits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 <?php else: ?>
 
 <!-- =========================
-     LISTE PRODUITS
+     LISTE PRODUITS AVEC FILTRES
 ========================= -->
-<div class="page-content">
+<div class="page-content page-layout" style="display:flex; gap:2rem;">
 
-    <!-- FILTRES -->
-    <form method="GET" style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:2rem;">
-
-        <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Recherche...">
-
-        <select name="categorie">
-            <option value="0">Toutes</option>
-            <?php foreach ($categories as $cat): ?>
-                <option value="<?= $cat['id'] ?>" <?= $cat_id == $cat['id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($cat['nom']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-
-        <select name="tri">
-            <option value="date_ajout" <?= $sort == 'date_ajout' ? 'selected' : '' ?>>Nouveautés</option>
-            <option value="prix" <?= $sort == 'prix' ? 'selected' : '' ?>>Prix</option>
-            <option value="nom" <?= $sort == 'nom' ? 'selected' : '' ?>>Nom</option>
-            <option value="intensite" <?= $sort == 'intensite' ? 'selected' : '' ?>>Intensité</option>
-        </select>
-
-        <button type="submit" class="btn btn-primary">Filtrer</button>
-    </form>
-
-    <!-- PRODUITS -->
-    <div class="products-grid">
-
-        <?php foreach ($produits as $p): ?>
-            <div class="product-card">
-
-                <!-- IMAGE PROPRE -->
-                <div style="overflow:hidden; height:200px;">
-                    <?= productImage($p['image'], $p['nom']) ?>
-                </div>
-
-                <div class="product-body">
-
-                    <div class="product-cat">
-                        <?= htmlspecialchars($p['categorie_nom'] ?? 'Café') ?>
-                    </div>
-
-                    <div class="product-name">
-                        <?= htmlspecialchars($p['nom']) ?>
-                    </div>
-
-                    <div class="product-desc">
-                        <?= htmlspecialchars(mb_substr($p['description'], 0, 100)) ?>...
-                    </div>
-
-                    <div class="product-price">
-                        <?= number_format($p['prix'], 2) ?> TND
-                    </div>
-
-                </div>
-
-                <div class="product-actions">
-                    <a href="produits.php?id=<?= $p['id'] ?>">Détails</a>
-                    <a href="panier.php?action=add&id=<?= $p['id'] ?>">🛒 Ajouter</a>
-                </div>
-
+    <!-- SIDEBAR FILTRES -->
+    <aside class="filter-sidebar">
+        <form id="filter-form" onsubmit="event.preventDefault(); applyFilters();">
+            <div class="filter-group">
+                <label>Recherche</label>
+                <input type="text" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Ex: Espresso...">
             </div>
-        <?php endforeach; ?>
 
+            <div class="filter-group">
+                <label>Catégorie</label>
+                <select name="categorie">
+                    <option value="0">Toutes les catégories</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?= $cat['id'] ?>" <?= $cat_id == $cat['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($cat['nom']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Origine</label>
+                <select name="origine">
+                    <option value="">Toutes les origines</option>
+                    <?php 
+                    $origines = $db->query("SELECT DISTINCT origine FROM produits WHERE origine IS NOT NULL AND origine != '' ORDER BY origine")->fetch_all(MYSQLI_ASSOC);
+                    foreach ($origines as $org): ?>
+                        <option value="<?= htmlspecialchars($org['origine']) ?>" <?= $origine == $org['origine'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($org['origine']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Intensité (max: 10)</label>
+                <input type="range" name="intensite" min="0" max="10" value="<?= $intensite ?>" oninput="this.nextElementSibling.value = this.value == 0 ? 'Toutes' : this.value">
+                <output style="display:block; text-align:center; font-weight:bold; margin-top:0.5rem; color:var(--brown-dark);"><?= $intensite == 0 ? 'Toutes' : $intensite ?></output>
+            </div>
+
+            <div class="filter-group">
+                <label>Trier par</label>
+                <select name="tri">
+                    <option value="date_ajout" <?= $sort == 'date_ajout' ? 'selected' : '' ?>>Nouveautés</option>
+                    <option value="prix_asc" <?= $sort == 'prix_asc' ? 'selected' : '' ?>>Prix croissant</option>
+                    <option value="prix_desc" <?= $sort == 'prix_desc' ? 'selected' : '' ?>>Prix décroissant</option>
+                    <option value="nom" <?= $sort == 'nom' ? 'selected' : '' ?>>Nom (A-Z)</option>
+                </select>
+            </div>
+        </form>
+    </aside>
+
+    <!-- GRILLE PRODUITS -->
+    <div style="flex:1;">
+        <div class="products-grid" id="dynamic-products-grid" style="transition: opacity 0.3s ease;">
+            <?php 
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            if (!isset($_SESSION['favorites'])) $_SESSION['favorites'] = [];
+            
+            if (empty($produits)): ?>
+                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-light);">Aucun produit trouvé avec ces critères.</div>
+            <?php else: ?>
+                <?php foreach ($produits as $p): 
+                    $is_fav = in_array($p['id'], $_SESSION['favorites']);
+                ?>
+                <div class="product-card">
+                    <div class="product-img-wrapper" style="position:relative; overflow:hidden; height:200px;">
+                        <?= productImage($p['image'], $p['nom']) ?>
+                        <button class="btn-fav <?= $is_fav ? 'active' : '' ?>" onclick="toggleFavorite(<?= $p['id'] ?>, this)" title="Favoris">
+                            <?= $is_fav ? '❤️' : '🤍' ?>
+                        </button>
+                    </div>
+                    <div class="product-body">
+                        <div class="product-cat"><?= htmlspecialchars($p['categorie_nom'] ?? 'Café') ?></div>
+                        <div class="product-name"><?= htmlspecialchars($p['nom']) ?></div>
+                        <div class="product-desc"><?= htmlspecialchars(mb_substr($p['description'], 0, 90)) ?>...</div>
+                        
+                        <div class="product-meta">
+                            <div class="product-price"><?= number_format($p['prix'], 2) ?> <span>TND</span></div>
+                            <div class="intensity-bar" title="Intensité: <?= $p['intensite'] ?>/10">
+                                <?php for ($i = 1; $i <= 10; $i++): ?>
+                                <div class="intensity-dot <?= $i <= $p['intensite'] ? 'filled' : '' ?>"></div>
+                                <?php endfor; ?>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 1rem; display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-light);">
+                            <span>🌍 <?= htmlspecialchars($p['origine']) ?></span>
+                            <span><?= getStockDisplay($p['stock']) ?></span>
+                        </div>
+                    </div>
+                    <div class="product-actions" style="display:flex; gap:0.5rem; flex-direction:column;">
+                        <div class="qty-selector" style="display:flex; width:100%; border:1px solid #ddd; border-radius:50px; overflow:hidden;">
+                            <button type="button" class="qty-btn" onclick="updateQty(this, -1)" style="flex:1; border:none; background:var(--cream); cursor:pointer;">-</button>
+                            <input type="number" class="qty-input" id="qty-list-<?= $p['id'] ?>" value="1" min="1" max="<?= $p['stock'] ?>" readonly style="flex:2; border:none; text-align:center; font-family:'DM Sans'; font-weight:bold; background:var(--white); -moz-appearance: textfield;">
+                            <button type="button" class="qty-btn" onclick="updateQty(this, 1)" style="flex:1; border:none; background:var(--cream); cursor:pointer;">+</button>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; width:100%;">
+                            <a href="produits.php?id=<?= $p['id'] ?>" class="btn btn-outline btn-sm" style="flex:1; text-align:center; padding: 0.5rem;">Détails</a>
+                            <?php if ($p['stock'] > 0): ?>
+                                <button class="btn btn-primary btn-sm" style="flex:2; padding: 0.5rem;" onclick="addToCart(<?= $p['id'] ?>, document.getElementById('qty-list-<?= $p['id'] ?>').value)">Ajouter 🛒</button>
+                            <?php else: ?>
+                                <button class="btn btn-outline btn-sm" style="flex:2; opacity:0.5; cursor:not-allowed; padding: 0.5rem;" disabled>Épuisé</button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
     </div>
 
 </div>
