@@ -53,12 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <p class="form-link">Pas encore de compte ? <a href="inscription.php">Créer un compte</a></p>
 
-    <!-- Comptes de démo -->
-    <div style="margin-top:2rem; padding:1rem; background:var(--cream); border-radius:8px; font-size:0.85rem;">
-        <strong>🧪 Comptes de démonstration :</strong><br>
-        Admin: admin@cafestore.com / admin123<br>
-        Client: sami@email.com / client123
-    </div>
+
 </div>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
