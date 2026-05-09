@@ -1,5 +1,39 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize things if needed
+    // Cookie Banner Logic
+    const cookieBanner = document.getElementById('cookie-banner');
+    const acceptBtn = document.getElementById('accept-cookies');
+    const declineBtn = document.getElementById('decline-cookies');
+
+    if (cookieBanner) {
+        const hideBanner = () => {
+            cookieBanner.style.transform = 'translateY(150%)';
+            setTimeout(() => cookieBanner.remove(), 800);
+        };
+
+        const setCookie = (name, value, days) => {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+        };
+
+        if(acceptBtn) {
+            acceptBtn.addEventListener('click', () => {
+                setCookie('cookie_consent', 'accepted', 365);
+                hideBanner();
+            });
+        }
+
+        if(declineBtn) {
+            declineBtn.addEventListener('click', () => {
+                setCookie('cookie_consent', 'declined', 365);
+                hideBanner();
+            });
+        }
+    }
 });
 
 function showToast(message, type = 'success') {
