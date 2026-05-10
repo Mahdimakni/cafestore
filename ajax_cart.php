@@ -22,9 +22,8 @@ $db = getDB();
 
 if ($action === 'add') {
     $stmt = $db->prepare("SELECT id, stock FROM produits WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $prod = $stmt->get_result()->fetch_assoc();
+    $stmt->execute([$id]);
+    $prod = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($prod) {
         if ($prod['stock'] < $qty) {
             echo json_encode(['status' => 'error', 'message' => 'Stock insuffisant.']);
@@ -65,9 +64,8 @@ if ($action === 'update') {
     $subtotal = 0;
     if (isset($_SESSION['panier'][$id])) {
         $stmt = $db->prepare("SELECT prix FROM produits WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $p = $stmt->get_result()->fetch_assoc();
+        $stmt->execute([$id]);
+        $p = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($p) {
             $subtotal = $p['prix'] * $_SESSION['panier'][$id];
         }

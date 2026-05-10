@@ -22,24 +22,20 @@ if ($sort === 'date_ajout') $order_by = 'p.date_ajout DESC';
 
 $where = [];
 $params = [];
-$types = '';
 
 if ($cat_id > 0) {
     $where[] = "p.categorie_id = ?";
     $params[] = $cat_id;
-    $types .= 'i';
 }
 
 if ($intensite > 0) {
     $where[] = "p.intensite = ?";
     $params[] = $intensite;
-    $types .= 'i';
 }
 
 if (!empty($origine)) {
     $where[] = "p.origine = ?";
     $params[] = $origine;
-    $types .= 's';
 }
 
 if (!empty($search)) {
@@ -47,7 +43,6 @@ if (!empty($search)) {
     $like = "%$search%";
     $params[] = $like;
     $params[] = $like;
-    $types .= 'ss';
 }
 
 $where_sql = $where ? "WHERE " . implode(" AND ", $where) : "";
@@ -61,13 +56,8 @@ $query = "
 ";
 
 $stmt = $db->prepare($query);
-
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
-}
-
-$stmt->execute();
-$produits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->execute($params);
+$produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($produits)) {
     echo '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--text-light);">Aucun produit trouvé avec ces critères.</div>';

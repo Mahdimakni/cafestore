@@ -10,7 +10,7 @@ $produits_vedettes = $db->query("
     LEFT JOIN categories c ON p.categorie_id = c.id
     ORDER BY p.date_ajout DESC
     LIMIT 4
-")->fetch_all(MYSQLI_ASSOC);
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!-- HERO -->

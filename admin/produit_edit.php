@@ -17,11 +17,10 @@ $produit = [
 
 if ($id > 0) {
     $stmt = $db->prepare("SELECT * FROM produits WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if ($res->num_rows > 0) {
-        $produit = $res->fetch_assoc();
+    $stmt->execute([$id]);
+    $produit_db = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($produit_db) {
+        $produit = $produit_db;
     } else {
         setFlash("Produit introuvable.", "error");
         header("Location: produits.php");
@@ -44,15 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if ($id > 0) {
             $stmt = $db->prepare("UPDATE produits SET nom=?, categorie_id=?, description=?, prix=?, stock=?, origine=?, intensite=?, image=? WHERE id=?");
-            $stmt->bind_param("sisdisisi", $nom, $categorie_id, $description, $prix, $stock, $origine, $intensite, $image, $id);
+            $params = [$nom, $categorie_id, $description, $prix, $stock, $origine, $intensite, $image, $id];
             $msg = "Produit modifié avec succès.";
         } else {
             $stmt = $db->prepare("INSERT INTO produits (nom, categorie_id, description, prix, stock, origine, intensite, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sisdisis", $nom, $categorie_id, $description, $prix, $stock, $origine, $intensite, $image);
+            $params = [$nom, $categorie_id, $description, $prix, $stock, $origine, $intensite, $image];
             $msg = "Produit ajouté avec succès.";
         }
 
-        if ($stmt->execute()) {
+        if ($stmt->execute($params)) {
             setFlash($msg, "success");
             header("Location: produits.php");
             exit;
@@ -62,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$categories = $db->query("SELECT * FROM categories ORDER BY nom")->fetch_all(MYSQLI_ASSOC);
+$categories = $db->query("SELECT * FROM categories ORDER BY nom")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div style="background:var(--white); border-radius:var(--radius); padding:2rem; box-shadow:0 2px 10px var(--shadow); max-width:800px; margin:0 auto;">

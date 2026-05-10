@@ -11,8 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['statut'], $_POST['com
     $commande_id     = intval($_POST['commande_id']);
     if (in_array($nouveau_statut, $statuts_valides)) {
         $stmt = $db->prepare("UPDATE commandes SET statut = ? WHERE id = ?");
-        $stmt->bind_param("si", $nouveau_statut, $commande_id);
-        $stmt->execute();
+        $stmt->execute([$nouveau_statut, $commande_id]);
         setFlash('success', "Statut de la commande #$commande_id mis à jour.");
     }
     header('Location: commandes.php');
@@ -27,18 +26,16 @@ if ($detail_id > 0) {
         FROM commandes c JOIN utilisateurs u ON u.id = c.utilisateur_id
         WHERE c.id = ?
     ");
-    $stmt->bind_param("i", $detail_id);
-    $stmt->execute();
-    $commande = $stmt->get_result()->fetch_assoc();
+    $stmt->execute([$detail_id]);
+    $commande = $stmt->fetch(PDO::FETCH_ASSOC);
 
     $stmt2 = $db->prepare("
         SELECT lc.*, p.nom AS produit_nom FROM lignes_commande lc
         JOIN produits p ON p.id = lc.produit_id
         WHERE lc.commande_id = ?
     ");
-    $stmt2->bind_param("i", $detail_id);
-    $stmt2->execute();
-    $lignes = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt2->execute([$detail_id]);
+    $lignes = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 }
 
 $statut_labels = [
@@ -108,7 +105,7 @@ $commandes = $db->query("
     FROM commandes c JOIN utilisateurs u ON u.id = c.utilisateur_id
     $where
     ORDER BY c.date_commande DESC
-")->fetch_all(MYSQLI_ASSOC);
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; flex-wrap:wrap;">

@@ -5,9 +5,8 @@ requireLogin();
 
 $db = getDB();
 $stmt = $db->prepare("SELECT * FROM utilisateurs WHERE id = ?");
-$stmt->bind_param("i", $_SESSION['user_id']);
-$stmt->execute();
-$user = $stmt->get_result()->fetch_assoc();
+$stmt->execute([$_SESSION['user_id']]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 $error = $success = '';
 
@@ -29,10 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($new_pass) {
             $hash = password_hash($new_pass, PASSWORD_DEFAULT);
             $stmt = $db->prepare("UPDATE utilisateurs SET nom=?, prenom=?, telephone=?, adresse=?, mot_de_passe=? WHERE id=?");
-            $stmt->bind_param("sssssi", $nom, $prenom, $telephone, $adresse, $hash, $_SESSION['user_id']);
+            $stmt->execute([$nom, $prenom, $telephone, $adresse, $hash, $_SESSION['user_id']]);
         } else {
             $stmt = $db->prepare("UPDATE utilisateurs SET nom=?, prenom=?, telephone=?, adresse=? WHERE id=?");
-            $stmt->bind_param("ssssi", $nom, $prenom, $telephone, $adresse, $_SESSION['user_id']);
+            $stmt->execute([$nom, $prenom, $telephone, $adresse, $_SESSION['user_id']]);
         }
         if ($stmt->execute()) {
             $_SESSION['user_nom']    = $nom;

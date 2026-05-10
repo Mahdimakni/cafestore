@@ -14,11 +14,13 @@ define('SITE_URL', 'http://localhost/cafestore');
 function getDB() {
     static $conn = null;
     if ($conn === null) {
-       $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, 3307);
-        if ($conn->connect_error) {
-            die("Erreur de connexion: " . $conn->connect_error);
+        try {
+            $dsn = "mysql:host=" . DB_HOST . ";port=3307;dbname=" . DB_NAME . ";charset=utf8mb4";
+            $conn = new PDO($dsn, DB_USER, DB_PASS);
+            $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $e) {
+            die("Erreur de connexion: " . $e->getMessage());
         }
-        $conn->set_charset("utf8mb4");
     }
     return $conn;
 }

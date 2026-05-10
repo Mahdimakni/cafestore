@@ -10,8 +10,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])
     // Optionnel: vérifier si des commandes contiennent ce produit avant de le supprimer, 
     // ou supprimer l'image associée. Pour faire simple, on supprime.
     $stmt = $db->prepare("DELETE FROM produits WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    if ($stmt->execute()) {
+    if ($stmt->execute([$id])) {
         setFlash("Produit supprimé avec succès.", "success");
     } else {
         setFlash("Erreur lors de la suppression.", "error");
@@ -25,8 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_stock'])) {
     $id = intval($_POST['id']);
     $stock = intval($_POST['stock']);
     $stmt = $db->prepare("UPDATE produits SET stock = ? WHERE id = ?");
-    $stmt->bind_param("ii", $stock, $id);
-    if ($stmt->execute()) {
+    if ($stmt->execute([$stock, $id])) {
         setFlash("Stock mis à jour avec succès.", "success");
     } else {
         setFlash("Erreur lors de la mise à jour.", "error");
@@ -41,7 +39,7 @@ $produits = $db->query("
     FROM produits p 
     LEFT JOIN categories c ON p.categorie_id = c.id 
     ORDER BY p.date_ajout DESC
-")->fetch_all(MYSQLI_ASSOC);
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">

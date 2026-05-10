@@ -33,10 +33,8 @@ function requireAdmin() {
 function loginUser($email, $password) {
     $db = getDB();
     $stmt = $db->prepare("SELECT id, nom, prenom, email, mot_de_passe, role FROM utilisateurs WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $user = $result->fetch_assoc();
+    $stmt->execute([$email]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
  
     if ($user && password_verify($password, $user['mot_de_passe'])) {
         $_SESSION['user_id']    = $user['id'];
@@ -87,7 +85,7 @@ function getCartTotal() {
     $ids   = implode(',', array_map('intval', array_keys($cart)));
     $res   = $db->query("SELECT id, prix FROM produits WHERE id IN ($ids)");
     $total = 0;
-    while ($p = $res->fetch_assoc()) {
+    while ($p = $res->fetch(PDO::FETCH_ASSOC)) {
         $total += $p['prix'] * $cart[$p['id']];
     }
     return $total;

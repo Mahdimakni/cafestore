@@ -12,9 +12,8 @@ $stmt = $db->prepare("
     GROUP BY c.id
     ORDER BY c.date_commande DESC
 ");
-$stmt->bind_param("i", $_SESSION['user_id']);
-$stmt->execute();
-$commandes = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->execute([$_SESSION['user_id']]);
+$commandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $statut_labels = [
     'en_attente' => ['label' => 'En attente',  'class' => 'badge-warning'],

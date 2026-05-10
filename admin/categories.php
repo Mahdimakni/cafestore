@@ -9,8 +9,7 @@ $id     = intval($_GET['id'] ?? 0);
 // Suppression
 if ($action === 'delete' && $id > 0) {
     $stmt = $db->prepare("DELETE FROM categories WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
+    $stmt->execute([$id]);
     setFlash('success', 'Catégorie supprimée.');
     header('Location: categories.php');
     exit();
@@ -25,14 +24,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         if ($id > 0) {
             $stmt = $db->prepare("UPDATE categories SET nom=?, description=? WHERE id=?");
-            $stmt->bind_param("ssi", $nom, $desc, $id);
+            $params = [$nom, $desc, $id];
             $msg = 'Catégorie modifiée.';
         } else {
             $stmt = $db->prepare("INSERT INTO categories (nom, description) VALUES (?, ?)");
-            $stmt->bind_param("ss", $nom, $desc);
+            $params = [$nom, $desc];
             $msg = 'Catégorie ajoutée.';
         }
-        $stmt->execute();
+        $stmt->execute($params);
         setFlash('success', $msg);
         header('Location: categories.php');
         exit();
@@ -42,9 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $categorie = null;
 if ($action === 'edit' && $id > 0) {
     $stmt = $db->prepare("SELECT * FROM categories WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $categorie = $stmt->get_result()->fetch_assoc();
+    $stmt->execute([$id]);
+    $categorie = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 ?>
 
@@ -80,7 +78,7 @@ $categories = $db->query("
     FROM categories c
     LEFT JOIN produits p ON p.categorie_id = c.id
     GROUP BY c.id ORDER BY c.nom
-")->fetch_all(MYSQLI_ASSOC);
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <table class="data-table">
     <thead>

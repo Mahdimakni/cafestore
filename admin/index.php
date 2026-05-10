@@ -3,18 +3,18 @@ $pageTitle = 'Tableau de bord';
 require_once __DIR__ . '/header.php';
 
 $db = getDB();
-$nb_produits   = $db->query("SELECT COUNT(*) FROM produits")->fetch_row()[0];
-$nb_clients    = $db->query("SELECT COUNT(*) FROM utilisateurs WHERE role='client'")->fetch_row()[0];
-$nb_commandes  = $db->query("SELECT COUNT(*) FROM commandes")->fetch_row()[0];
-$ca_total      = $db->query("SELECT COALESCE(SUM(total),0) FROM commandes WHERE statut != 'annulee'")->fetch_row()[0];
+$nb_produits   = $db->query("SELECT COUNT(*) FROM produits")->fetchColumn();
+$nb_clients    = $db->query("SELECT COUNT(*) FROM utilisateurs WHERE role='client'")->fetchColumn();
+$nb_commandes  = $db->query("SELECT COUNT(*) FROM commandes")->fetchColumn();
+$ca_total      = $db->query("SELECT COALESCE(SUM(total),0) FROM commandes WHERE statut != 'annulee'")->fetchColumn();
 
 $commandes_recentes = $db->query("
     SELECT c.*, CONCAT(u.prenom, ' ', u.nom) AS client
     FROM commandes c JOIN utilisateurs u ON u.id = c.utilisateur_id
     ORDER BY c.date_commande DESC LIMIT 5
-")->fetch_all(MYSQLI_ASSOC);
+")->fetchAll(PDO::FETCH_ASSOC);
 
-$produits_stock = $db->query("SELECT * FROM produits ORDER BY stock ASC LIMIT 5")->fetch_all(MYSQLI_ASSOC);
+$produits_stock = $db->query("SELECT * FROM produits ORDER BY stock ASC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div class="stats-grid">

@@ -12,8 +12,7 @@ if ($action === 'delete' && $id > 0) {
         setFlash('error', 'Vous ne pouvez pas supprimer votre propre compte.');
     } else {
         $stmt = $db->prepare("DELETE FROM utilisateurs WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
+        $stmt->execute([$id]);
         setFlash('success', 'Utilisateur supprimé.');
     }
     header('Location: utilisateurs.php');
@@ -25,8 +24,7 @@ if ($action === 'role' && $id > 0) {
     $role = $_GET['role'] ?? 'client';
     if (in_array($role, ['client', 'admin']) && $id !== intval($_SESSION['user_id'])) {
         $stmt = $db->prepare("UPDATE utilisateurs SET role = ? WHERE id = ?");
-        $stmt->bind_param("si", $role, $id);
-        $stmt->execute();
+        $stmt->execute([$role, $id]);
         setFlash('success', 'Rôle mis à jour.');
     }
     header('Location: utilisateurs.php');
@@ -39,7 +37,7 @@ $utilisateurs = $db->query("
     LEFT JOIN commandes c ON c.utilisateur_id = u.id
     GROUP BY u.id
     ORDER BY u.date_inscription DESC
-")->fetch_all(MYSQLI_ASSOC);
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div style="margin-bottom:1.5rem;">

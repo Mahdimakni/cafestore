@@ -39,9 +39,8 @@ if ($produit_id > 0) {
         LEFT JOIN categories c ON p.categorie_id = c.id
         WHERE p.id = ?
     ");
-    $stmt->bind_param("i", $produit_id);
-    $stmt->execute();
-    $produit = $stmt->get_result()->fetch_assoc();
+    $stmt->execute([$produit_id]);
+    $produit = $stmt->fetch(PDO::FETCH_ASSOC);
 } else {
     $produit = null;
 }
@@ -50,19 +49,17 @@ if ($produit_id > 0) {
    CATEGORIES
 ========================= */
 $categories = $db->query("SELECT * FROM categories ORDER BY nom")
-                 ->fetch_all(MYSQLI_ASSOC);
+                 ->fetchAll(PDO::FETCH_ASSOC);
 
 /* =========================
    PRODUITS LISTE
 ========================= */
 $where  = [];
 $params = [];
-$types  = '';
 
 if ($cat_id > 0) {
     $where[]  = "p.categorie_id = ?";
     $params[] = $cat_id;
-    $types   .= 'i';
 }
 
 if (!empty($search)) {
@@ -72,8 +69,6 @@ if (!empty($search)) {
     $params[] = $like;
     $params[] = $like;
     $params[] = $like;
-
-    $types .= 'sss';
 }
 
 $where_sql = $where ? "WHERE " . implode(" AND ", $where) : "";
@@ -87,13 +82,8 @@ $query = "
 ";
 
 $stmt = $db->prepare($query);
-
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
-}
-
-$stmt->execute();
-$produits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->execute($params);
+$produits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!-- =========================
@@ -225,7 +215,7 @@ $produits = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 <select name="origine">
                     <option value="">Toutes les origines</option>
                     <?php 
-                    $origines = $db->query("SELECT DISTINCT origine FROM produits WHERE origine IS NOT NULL AND origine != '' ORDER BY origine")->fetch_all(MYSQLI_ASSOC);
+                    $origines = $db->query("SELECT DISTINCT origine FROM produits WHERE origine IS NOT NULL AND origine != '' ORDER BY origine")->fetchAll(PDO::FETCH_ASSOC);
                     foreach ($origines as $org): ?>
                         <option value="<?= htmlspecialchars($org['origine']) ?>" <?= $origine == $org['origine'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($org['origine']) ?>

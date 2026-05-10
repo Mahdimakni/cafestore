@@ -1,7 +1,6 @@
 <?php
-$conn = new mysqli('127.0.0.1', 'root', '', 'cafestore', 3307);
-if ($conn->connect_error) die("Conn failed");
+$conn = new PDO('mysql:host=127.0.0.1;port=3307;dbname=cafestore', 'root', '');
 $res = $conn->query("DESCRIBE produits");
-while ($row = $res->fetch_assoc()) {
+while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
     print_r($row);
 }

@@ -13,9 +13,8 @@ if ($action === 'add' && $product_id > 0) {
     $qty = intval($_GET['qty'] ?? 1);
     // Vérifier que le produit existe
     $stmt = $db->prepare("SELECT id, stock FROM produits WHERE id = ?");
-    $stmt->bind_param("i", $product_id);
-    $stmt->execute();
-    $prod = $stmt->get_result()->fetch_assoc();
+    $stmt->execute([$product_id]);
+    $prod = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($prod) {
         addToCart($product_id, max(1, $qty));
         setFlash('success', 'Produit ajouté au panier !');
@@ -51,21 +50,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['commander'])) {
         $total = getCartTotal();
         // Créer la commande
         $stmt = $db->prepare("INSERT INTO commandes (utilisateur_id, total, adresse_livraison) VALUES (?, ?, ?)");
-        $stmt->bind_param("ids", $_SESSION['user_id'], $total, $adresse);
-        $stmt->execute();
-        $commande_id = $db->insert_id;
+        $stmt->execute([$_SESSION['user_id'], $total, $adresse]);
+        $commande_id = $db->lastInsertId();
 
         // Lignes de commande
         $ids = implode(',', array_map('intval', array_keys($cart)));
-        $produits_db = $db->query("SELECT id, prix, stock FROM produits WHERE id IN ($ids)")->fetch_all(MYSQLI_ASSOC);
+        $produits_db = $db->query("SELECT id, prix, stock FROM produits WHERE id IN ($ids)")->fetchAll(PDO::FETCH_ASSOC);
         $produits_map = array_column($produits_db, null, 'id');
 
         foreach ($cart as $pid => $qty) {
             if (isset($produits_map[$pid])) {
                 $prix = $produits_map[$pid]['prix'];
                 $stmt2 = $db->prepare("INSERT INTO lignes_commande (commande_id, produit_id, quantite, prix_unitaire) VALUES (?, ?, ?, ?)");
-                $stmt2->bind_param("iiid", $commande_id, $pid, $qty, $prix);
-                $stmt2->execute();
+                $stmt2->execute([$commande_id, $pid, $qty, $prix]);
                 // Mise à jour du stock
                 $new_stock = max(0, $produits_map[$pid]['stock'] - $qty);
                 $db->query("UPDATE produits SET stock = $new_stock WHERE id = $pid");
@@ -84,7 +81,7 @@ $produits_panier = [];
 if (!empty($cart)) {
     $ids = implode(',', array_map('intval', array_keys($cart)));
     $res = $db->query("SELECT * FROM produits WHERE id IN ($ids)");
-    while ($p = $res->fetch_assoc()) {
+    while ($p = $res->fetch(PDO::FETCH_ASSOC)) {
         $p['quantite'] = $cart[$p['id']];
         $p['sous_total'] = $p['prix'] * $p['quantite'];
         $produits_panier[] = $p;

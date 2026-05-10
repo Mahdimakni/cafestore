@@ -15,7 +15,7 @@ if (!empty($fav_ids)) {
         FROM produits p
         LEFT JOIN categories c ON p.categorie_id = c.id
         WHERE p.id IN ($ids)
-    ")->fetch_all(MYSQLI_ASSOC);
+    ")->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
 

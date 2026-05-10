@@ -30,15 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $db = getDB();
         $check = $db->prepare("SELECT id FROM utilisateurs WHERE email = ?");
-        $check->bind_param("s", $email);
-        $check->execute();
-        if ($check->get_result()->num_rows > 0) {
+        $check->execute([$email]);
+        if ($check->fetch()) {
             $error = 'Cet email est déjà utilisé.';
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $db->prepare("INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, telephone, adresse) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssss", $nom, $prenom, $email, $hash, $telephone, $adresse);
-            if ($stmt->execute()) {
+            if ($stmt->execute([$nom, $prenom, $email, $hash, $telephone, $adresse])) {
                 setFlash('success', 'Compte créé avec succès ! Vous pouvez maintenant vous connecter.');
                 header('Location: login.php');
                 exit();
